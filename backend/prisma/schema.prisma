@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  avatarUrl    String?  @map("avatar_url") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile           Profile?
+  moodLogs          MoodLog[]
+  conversations     Conversation[]
+  recommendations   Recommendation[]
+  gameSessions      GameSession[]
+  activityCompletes ActivityCompletion[]
+  journalEntries    JournalEntry[]
+  emergencyContacts EmergencyContact[]
+
+  @@map("users")
+}
+
+model Profile {
+  id                      Int    @id @default(autoincrement())
+  userId                  Int    @unique @map("user_id")
+  preferredLanguage       String @default("en") @map("preferred_language") @db.VarChar(10)
+  timezone                String @default("UTC") @db.VarChar(64)
+  notificationPreferences Json   @map("notification_preferences")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model EmergencyContact {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  name         String   @db.VarChar(100)
+  phone        String   @db.VarChar(30)
+  relationship String?  @db.VarChar(50)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model RevokedToken {
+  id        Int      @id @default(autoincrement())
+  jti       String   @unique @db.VarChar(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@map("revoked_tokens")
+}
+
+model MoodLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  mood      String   @db.VarChar(20)
+  score     Int
+  source    String   @default("manual") @db.VarChar(20)
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("mood_logs")
+}
+
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @default("New conversation") @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  sender         String   @db.VarChar(20)
+  content        String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Recommendation {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     @map("user_id")
+  type        String   @db.VarChar(20)
+  category    String   @db.VarChar(40)
+  title       String   @db.VarChar(200)
+  subtitle    String?  @db.VarChar(200)
+  description String?
+  imageUrl    String?  @map("image_url") @db.VarChar(500)
+  externalUrl String?  @map("external_url") @db.VarChar(500)
+  moods       String[]
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  provider    String   @default("catalog") @db.VarChar(30)
+  externalId  String?  @map("external_id") @db.VarChar(100)
+  extra       Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([userId])
+  @@map("recommendations")
+}
+
+model Game {
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique @db.VarChar(50)
+  name            String   @db.VarChar(100)
+  description     String
+  category        String   @db.VarChar(30)
+  tags            String[]
+  label           String   @db.VarChar(40)
+  difficulty      String   @default("easy") @db.VarChar(20)
+  durationMinutes Int      @default(3) @map("duration_minutes")
+  isPlayable      Boolean  @default(true) @map("is_playable")
+
+  sessions GameSession[]
+
+  @@map("games")
+}
+
+model GameSession {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  gameId      Int      @map("game_id")
+  score       Int
+  duration    Int
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@index([gameId])
+  @@map("game_sessions")
+}
+
+model Activity {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique @db.VarChar(150)
+  description String
+  category    String   @db.VarChar(30)
+  duration    Int
+  benefit     String?  @db.VarChar(60)
+  moods       String[]
+  mediaUrl    String?  @map("media_url") @db.VarChar(500)
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  steps       Json
+
+  completions ActivityCompletion[]
+
+  @@map("activities")
+}
+
+model ActivityCompletion {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  activityId  Int      @map("activity_id")
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@index([activityId])
+  @@map("activity_completions")
+}
+
+model JournalEntry {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(150)
+  content   String
+  mood      String?  @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("journal_entries")
+}

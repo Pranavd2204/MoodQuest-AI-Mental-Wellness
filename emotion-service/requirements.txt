@@ -1,0 +1,22 @@
+# Core Machine Learning & Vision Requirements
+# Note: For CUDA acceleration on Windows, PyTorch with CUDA 12.8 is installed in venv311.
+# Do NOT reinstall torch with standard 'pip install torch' or it may overwrite the CUDA build.
+# To install CUDA torch manually:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# FastAPI REST Service Requirements
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# Computer Vision & ML
+ultralytics>=8.3.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+PyYAML>=6.0
+
+
+# Required for FastAPI multipart image uploads
+python-multipart>=0.0.9

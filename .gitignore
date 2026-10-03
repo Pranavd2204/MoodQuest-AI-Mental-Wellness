@@ -1,0 +1,21 @@
+# Node
+node_modules/
+frontend/dist/
+backend/dist/
+
+# Prisma client is generated (npm install runs `prisma generate`)
+backend/src/generated/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

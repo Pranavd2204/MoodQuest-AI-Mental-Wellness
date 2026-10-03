@@ -1,0 +1,80 @@
+# =============================================================================
+# Git Ignore Configuration - Facial Emotion Detection Microservice
+# =============================================================================
+
+# --- Dataset Folders (Raw & Processed Images/Labels) ---
+9 Facial Expressions you need/
+9 Facial Expressions you need*/
+datasets/
+data/
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# --- Local Training Configs ---
+data_local.yaml
+
+# --- Python & Virtual Environments ---
+venv*/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Bytecode & Build Caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- YOLO Training Runs, Experiment Logs & Weights ---
+runs/
+wandb/
+*.log
+weights/
+yolo*.pt
+# Preserve the production trained model needed by the API / Website:
+!models/
+!models/best.pt
+
+# --- Testing & Code Quality Cache ---
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# --- Environment Secrets & Configs ---
+.env
+.env.local
+.env.*.local
+
+# --- IDE & OS Metadata ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
