@@ -59,6 +59,77 @@ Every screen talks to the real API and every piece of user data is stored in Pos
 | **Journal** | Full create / read / update / delete with optional mood tag. |
 | **Profile & Settings** | Name, avatar URL, language, timezone (used for streaks/charts), notification preferences, change password, trusted contacts, logout. |
 
+
+## 🤖 YOLO11n-Based Facial Emotion Recognition
+
+MoodQuest integrates a custom-trained **YOLO11n (You Only Look Once – Nano)** model for real-time facial expression recognition.
+
+The model is deployed through a separate Python FastAPI microservice and communicates with the MoodQuest Node.js backend.
+
+### Model Details
+
+| Component | Details |
+|---|---|
+| Detection Model | YOLO11n |
+| Model File | `best.pt` |
+| Model Format | PyTorch |
+| Inference Service | Python + FastAPI |
+| Dataset Size | Approximately 70,000 images |
+| Detection Type | Facial Expression Recognition |
+
+### Facial Expressions Detected
+
+The model is trained to recognize the following **9 facial expression classes**:
+
+| Class ID | Expression |
+|---|---|
+| 0 | Angry |
+| 1 | Contempt |
+| 2 | Disgust |
+| 3 | Fear |
+| 4 | Happy |
+| 5 | Natural |
+| 6 | Sad |
+| 7 | Sleepy |
+| 8 | Surprised |
+
+### Mood Mapping in MoodQuest
+
+The detected facial expressions are mapped to MoodQuest's mood categories:
+
+| Detected Expression | MoodQuest Mood |
+|---|---|
+| Happy | Happy |
+| Natural | Calm |
+| Sleepy | Calm |
+| Sad | Sad |
+| Angry | Angry |
+| Fear | Anxious |
+| Surprised | Anxious |
+| Disgust | Stressed |
+| Contempt | Stressed |
+
+### Dataset & Training
+
+The YOLO11n model was trained using a dataset containing approximately **70,000 images** for facial expression recognition.
+
+The trained model weights are stored at:
+
+`emotion-service/models/best.pt`
+
+### Detection Workflow
+
+1. The user opens the Emotion Detection page.
+2. The browser accesses the webcam with user permission.
+3. Still image frames are captured periodically.
+4. Frames are sent to the MoodQuest Node.js backend.
+5. The backend forwards the frames to the Python FastAPI emotion service.
+6. YOLO11n processes the images and predicts a facial expression.
+7. The detected expression is mapped to a MoodQuest mood.
+8. Confidence-filtered mood observations can be saved in PostgreSQL.
+
+**Note:** Facial expression recognition estimates visible expressions. It does not reliably determine a person's actual emotional state or provide a clinical diagnosis. Users can also manually select their mood.
+
 ---
 
 ## Architecture
@@ -152,25 +223,7 @@ MoodQuest/
 
 Defined in [`backend/prisma/schema.prisma`](backend/prisma/schema.prisma). Models are camelCase in code and map to snake_case tables.
 
-| Model (table) | Fields |
-|---|---|
-| `User` (`users`) | id, name, email (unique), passwordHash, avatarUrl, createdAt, updatedAt |
-| `Profile` (`user_profiles`) | id, userId (unique), preferredLanguage, timezone, notificationPreferences (JSONB) |
-| `MoodLog` (`mood_logs`) | id, userId, mood, score (1–5), source (`manual`, reserved: `chat`/`camera`/`voice`), note, createdAt |
-| `Conversation` (`conversations`) | id, userId, title, createdAt, updatedAt |
-| `Message` (`messages`) | id, conversationId, sender (`user`/`assistant`), content, createdAt |
-| `Recommendation` (`recommendations`) | id, userId (NULL = shared catalog), type (`music`/`movie`), category, title, subtitle, description, imageUrl, externalUrl, moods (text[]), isFeatured, provider, externalId, extra (JSONB), createdAt |
-| `Game` (`games`) | id, slug, name, description, category, tags (text[]), label, difficulty, durationMinutes, isPlayable |
-| `GameSession` (`game_sessions`) | id, userId, gameId, score, duration (s), completedAt |
-| `Activity` (`activities`) | id, title, description, category, duration (min), benefit, moods (text[]), mediaUrl, isFeatured, steps (JSONB) |
-| `ActivityCompletion` (`activity_completions`) | id, userId, activityId, completedAt |
-| `JournalEntry` (`journal_entries`) | id, userId, title, content, mood, createdAt, updatedAt |
-| `EmergencyContact` (`emergency_contacts`) | id, userId, name, phone, relationship, isPrimary, createdAt |
-| `RevokedToken` (`revoked_tokens`) | id, jti (unique), expiresAt — JWTs invalidated by logout |
 
-All user-owned tables cascade on user deletion.
-
----
 
 ## Environment variables
 
@@ -248,51 +301,6 @@ npm run dev                      # http://localhost:5173
 | `npm test` | Run API tests against `TEST_DATABASE_URL` |
 | `npm run test:unit` | Run the tests that need no database (Groq provider with a mocked API) |
 | `npm run typecheck` | TypeScript check |
-
----
-
-## API reference
-
-🔒 = requires `Authorization: Bearer <token>`.
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Create account → token + user |
-| POST | `/api/auth/login` | Log in → token + user |
-| POST | `/api/auth/logout` 🔒 | Revoke the current token |
-| GET | `/api/auth/me` 🔒 | Current user |
-| GET / PUT | `/api/users/profile` 🔒 | Read / update profile & settings |
-| PUT | `/api/users/password` 🔒 | Change password |
-| GET / POST | `/api/users/emergency-contacts` 🔒 | List / add trusted contacts |
-| PUT / DELETE | `/api/users/emergency-contacts/:id` 🔒 | Update / remove a contact |
-| GET / POST | `/api/mood` 🔒 | List / create mood check-ins |
-| GET | `/api/mood/stats?days=7` 🔒 | Latest mood, streak, trend, distribution, insight |
-| GET | `/api/progress/summary?days=7` 🔒 | Daily activity breakdown, totals, streaks |
-| GET / POST | `/api/chat/conversations` 🔒 | List / create conversations |
-| GET / DELETE | `/api/chat/conversations/:id` 🔒 | Conversation with messages / delete |
-| POST | `/api/chat/conversations/:id/messages` 🔒 | Send a message → stored user + assistant messages |
-| GET | `/api/recommendations?type=` 🔒 | All recommendation records |
-| GET | `/api/recommendations/music?category=&q=` 🔒 | Music feed (featured + items) |
-| GET | `/api/recommendations/movies?category=&q=` 🔒 | Movie feed |
-| GET | `/api/recommendations/exercises` 🔒 | Activities ranked for your latest mood |
-| GET | `/api/games?category=` 🔒 | Games with your play count and best score |
-| GET | `/api/games/history` 🔒 | Your game sessions |
-| GET | `/api/games/:id` 🔒 | One game |
-| POST | `/api/games/:id/sessions` 🔒 | Save a finished session |
-| GET | `/api/activities?category=` 🔒 | Activities with your completion counts |
-| GET | `/api/activities/completions` 🔒 | Your completion history |
-| GET | `/api/activities/:id` 🔒 | One activity with guided steps |
-| POST | `/api/activities/:id/complete` 🔒 | Mark completed |
-| GET / POST | `/api/journal` 🔒 | List / create entries |
-| GET / PUT / DELETE | `/api/journal/:id` 🔒 | Read / update / delete an entry |
-| GET | `/api/emotion/status` 🔒 | Whether an emotion model is enabled |
-| POST | `/api/emotion/analyze` 🔒 | Accepts a camera frame; returns **501** until an emotion model is connected |
-| GET | `/api/emergency/resources` | Emergency number + helplines (public) |
-| GET | `/health` | API + database health |
-
-Errors always use `{ "detail": "<human-readable message>" }` (validation errors add an `errors` list). Stack traces are never returned; a database outage returns `503`.
-
----
 
 ## Testing
 
